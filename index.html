@@ -159,9 +159,9 @@ async function fetchSheetData(gid){
 }
 
 function cleanVal(v){
-  if(!v)return'';
-  v=v.trim();
-  if(v===''||v.toLowerCase()==='nan'||v==='#N/A')return'';
+  if(v===null||v===undefined)return'';
+  v=String(v).trim();
+  if(v===''||v.toLowerCase()==='nan'||v==='#n/a'||v==='null'||v==='undefined')return'';
   if(/^\d+\.?\d*$/.test(v))return'';
   return v;
 }
