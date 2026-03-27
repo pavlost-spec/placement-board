@@ -150,28 +150,12 @@ let activeGeos=new Set(),activeCats=new Set();
 let dupMode=false,allCollapsed=false,collapsedBrands=new Set();
 
 // ── FETCH via Google Visualization API (works cross-origin) ──
+const PROXY='https://script.google.com/macros/s/AKfycbyoztFLuxotWSC6qIaYju8wjpl0yMt_sCHaMyiphvYkvcw_r9Hkz-2v0qMAHWQMOO1UrQ/exec';
 async function fetchSheetData(gid){
-  const url=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${gid}`;
+  const url=`${PROXY}?gid=${gid}`;
   const res=await fetch(url);
   if(!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.text();
-}
-
-function parseCSV(text){
-  const rows=[];
-  const lines=text.split('\n');
-  for(const line of lines){
-    const cols=[];let cur='',inQ=false;
-    for(let i=0;i<line.length;i++){
-      const c=line[i];
-      if(c==='"'){inQ=!inQ;continue;}
-      if(c===','&&!inQ){cols.push(cur.trim());cur='';}
-      else cur+=c;
-    }
-    cols.push(cur.trim());
-    rows.push(cols);
-  }
-  return rows;
+  return res.json();
 }
 
 function cleanVal(v){
@@ -240,8 +224,7 @@ async function loadMonth(monthName){
   }
   showLoader(`Завантаження: ${monthName}...`);
   try{
-    const csv=await fetchSheetData(gid);
-    const rows=parseCSV(csv);
+    const rows=await fetchSheetData(gid);
     DATA=parseSheetData(rows);
     buildFilters();
     render();
