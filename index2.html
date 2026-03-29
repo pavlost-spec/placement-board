@@ -16,8 +16,7 @@ body{font-family:"DM Sans",sans-serif;background:var(--bg);color:var(--text);min
 @keyframes spin{to{transform:rotate(360deg)}}
 .loader-text{font-size:13px;color:var(--muted);font-family:"DM Mono",monospace}
 
-/* TOPBAR */
-.topbar{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.97);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.97);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .logo{font-family:"DM Mono",monospace;font-size:12px;font-weight:500;color:var(--accent);letter-spacing:.08em}
 .sep{width:1px;height:20px;background:var(--border);flex-shrink:0}
 .flabel{font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;font-weight:500;white-space:nowrap}
@@ -26,10 +25,13 @@ body{font-family:"DM Sans",sans-serif;background:var(--bg);color:var(--text);min
 .statbar{font-family:"DM Mono",monospace;font-size:11px;color:var(--muted);margin-left:auto}
 .sv{color:#374151;font-weight:600}.se{color:#16a34a;font-weight:600}
 
-/* filter pills */
 .pill{font-size:11px;font-weight:500;padding:4px 11px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap}
 .pill:hover{border-color:#b0b7c3;color:var(--text)}
 .pill.active{background:var(--accent);border-color:var(--accent);color:#fff}
+
+.dup-btn{font-size:11px;font-weight:600;padding:4px 13px;border-radius:20px;border:1.5px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .15s}
+.dup-btn:hover{border-color:#b0b7c3;color:var(--text)}
+.dup-btn.on{background:#f59e0b;border-color:#f59e0b;color:#fff}
 
 .legend{display:flex;gap:10px;align-items:center}
 .leg{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted)}
@@ -38,58 +40,74 @@ body{font-family:"DM Sans",sans-serif;background:var(--bg);color:var(--text);min
 .leg-e{background:#dcfce7;border:1px solid #86efac}
 .leg-r{background:#fef9c3;border:1px solid #f59e0b}
 
-/* MAIN */
 .main{padding:20px 20px 60px}
+
+/* PROJECT GROUP */
+.project-block{margin-bottom:24px}
+.project-hdr{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 14px;border-radius:6px;
+  border-left:4px solid var(--bcolor,var(--accent));
+  background:rgba(0,0,0,.025);margin-bottom:12px;
+  cursor:pointer;user-select:none;
+}
+.project-hdr:hover{background:rgba(0,0,0,.04)}
+.project-name{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--bcolor,var(--accent))}
+.project-stat{font-size:11px;color:var(--muted);font-family:"DM Mono",monospace}
+.proj-chevron{font-size:11px;color:var(--muted);margin-left:auto;transition:transform .2s}
+.project-block.collapsed .proj-chevron{transform:rotate(-90deg)}
+.project-body{overflow:hidden;transition:max-height .25s ease,opacity .2s;max-height:99999px;opacity:1}
+.project-block.collapsed .project-body{max-height:0;opacity:0}
 
 /* PLACEMENT BLOCK */
 .placement-block{
   background:#fff;border:1px solid var(--border);border-radius:10px;
-  margin-bottom:16px;overflow:hidden;
+  margin-bottom:10px;overflow:hidden;
 }
 .placement-hdr{
-  display:flex;align-items:center;gap:12px;
-  padding:12px 16px;border-bottom:1px solid var(--border);
-  background:#fff;cursor:pointer;user-select:none;
-  transition:background .12s;
+  display:flex;align-items:center;gap:10px;padding:11px 16px;
+  background:#fff;cursor:pointer;user-select:none;transition:background .12s;
+  border-left:3px solid var(--bcolor,var(--accent));
 }
 .placement-hdr:hover{background:#f9fafb}
-.placement-name{font-size:12px;font-weight:600;color:var(--text)}
+.placement-name{font-size:12px;font-weight:500;color:var(--text)}
 .placement-meta{font-size:11px;color:var(--muted);font-family:"DM Mono",monospace}
 
-/* LIVE / NOT SET badge */
-.live-badge{
-  display:inline-flex;align-items:center;gap:5px;
-  font-size:10px;font-weight:600;letter-spacing:.04em;
-  padding:3px 9px;border-radius:20px;
-}
+.live-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:20px}
+.live-badge::before{content:"";width:6px;height:6px;border-radius:50%;display:inline-block}
 .live-badge.live{background:#dcfce7;color:#16a34a}
-.live-badge.live::before{content:"";width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block}
-.live-badge.notset{background:#f3f4f6;color:#9ca3af}
-.live-badge.notset::before{content:"";width:6px;height:6px;border-radius:50%;background:#d1d5db;display:inline-block}
+.live-badge.live::before{background:#22c55e}
 .live-badge.partial{background:#fef9c3;color:#b45309}
-.live-badge.partial::before{content:"";width:6px;height:6px;border-radius:50%;background:#f59e0b;display:inline-block}
+.live-badge.partial::before{background:#f59e0b}
+.live-badge.notset{background:#f3f4f6;color:#9ca3af}
+.live-badge.notset::before{background:#d1d5db}
 
 .chevron{font-size:11px;color:var(--muted);margin-left:auto;transition:transform .2s}
 .placement-block.collapsed .chevron{transform:rotate(-90deg)}
-.placement-body{overflow:hidden;transition:max-height .25s ease,opacity .2s,padding .2s;max-height:9999px;opacity:1;padding:14px 16px}
+.placement-body{overflow:hidden;transition:max-height .25s ease,opacity .2s,padding .2s;max-height:9999px;opacity:1;padding:12px 16px}
 .placement-block.collapsed .placement-body{max-height:0;opacity:0;padding:0 16px}
 
 /* 7x7 GRID */
-.row-wrap{margin-bottom:6px}
-.row-label{font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-family:"DM Mono",monospace;margin-bottom:4px}
+.row-wrap{margin-bottom:5px}
+.row-label{font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-family:"DM Mono",monospace;margin-bottom:3px}
 .slot-row{display:flex;gap:5px}
 
-.slot{
-  flex:1;min-height:66px;border-radius:6px;
-  padding:7px 9px 7px 12px;position:relative;
-  transition:transform .1s,box-shadow .1s;cursor:default;
-}
+.slot{flex:1;min-height:64px;border-radius:6px;padding:7px 9px 7px 12px;position:relative;transition:transform .1s,box-shadow .1s;cursor:default}
 .slot:hover{transform:translateY(-1px);z-index:2}
 
-.slot.filled{background:#e9eaec;border:1px solid #d1d5db;border-left:3px solid #6366f1}
+.slot.filled{background:#e9eaec;border:1px solid #d1d5db;border-left:3px solid var(--bcolor,var(--accent))}
 .slot.filled:hover{box-shadow:0 3px 10px rgba(0,0,0,.08)}
 .slot.filled .g{font-size:9px;font-weight:600;color:#1f2937;line-height:1.3;margin-top:1px}
 .slot.filled .p{font-size:8px;color:#6b7280;font-family:"DM Mono",monospace;margin-top:2px}
+
+/* dup highlight — only in dup mode */
+body.dup-mode .slot.filled.is-dup{background:#fef9c3;border-color:#f59e0b;border-left-color:#d97706}
+body.dup-mode .slot.filled.is-dup .g{color:#92400e}
+body.dup-mode .slot.filled:not(.is-dup){opacity:.3}
+body.dup-mode .slot.empty{opacity:.3}
+body.dup-mode .slot.reserved{opacity:.3}
+.dup-badge{position:absolute;top:5px;left:5px;font-size:7px;font-weight:700;background:#f59e0b;color:#fff;border-radius:3px;padding:1px 4px;font-family:"DM Mono",monospace;opacity:0;pointer-events:none;transition:opacity .15s}
+body.dup-mode .slot.filled.is-dup .dup-badge{opacity:1}
 
 .slot.empty{background:#dcfce7;border:1px solid #86efac;border-left:3px solid #22c55e}
 .slot.empty .fr{font-size:9px;font-weight:600;color:#16a34a;margin-top:12px}
@@ -97,7 +115,6 @@ body{font-family:"DM Sans",sans-serif;background:var(--bg);color:var(--text);min
 .slot.reserved{background:#fef9c3;border:1px solid #fcd34d;border-left:3px solid #f59e0b}
 .slot.reserved .g{font-size:9px;font-weight:500;color:#92400e;margin-top:1px}
 
-/* status dot on filled */
 .sdot{position:absolute;top:6px;right:7px;width:5px;height:5px;border-radius:50%}
 .sdot.ready{background:#22c55e}
 .sdot.pending{background:#e5e7eb}
@@ -118,20 +135,22 @@ body{font-family:"DM Sans",sans-serif;background:var(--bg);color:var(--text);min
 <div class="topbar">
   <div class="logo">♟ GRID / МАРТ 2026</div>
   <div class="sep"></div>
-  <span class="flabel">Фільтр</span>
+  <span class="flabel">Статус</span>
   <div style="display:flex;gap:4px" id="filterBtns">
-    <button class="pill active" data-filter="all" onclick="setFilter('all',this)">Всі</button>
-    <button class="pill" data-filter="live" onclick="setFilter('live',this)">LIVE</button>
-    <button class="pill" data-filter="notset" onclick="setFilter('notset',this)">Not set</button>
-    <button class="pill" data-filter="partial" onclick="setFilter('partial',this)">Частково</button>
+    <button class="pill active" onclick="setFilter('all',this)">Всі</button>
+    <button class="pill" onclick="setFilter('live',this)">LIVE</button>
+    <button class="pill" onclick="setFilter('notset',this)">Not set</button>
+    <button class="pill" onclick="setFilter('partial',this)">Частково</button>
   </div>
+  <div class="sep"></div>
+  <button class="dup-btn" id="dupBtn" onclick="toggleDups()">⚑ Повтори</button>
+  <button class="refresh-btn" onclick="loadData()">↻</button>
   <div class="sep"></div>
   <div class="legend">
     <div class="leg"><div class="leg-box leg-f"></div>Зайнято</div>
     <div class="leg"><div class="leg-box leg-e"></div>Вільно</div>
     <div class="leg"><div class="leg-box leg-r"></div>Резерв</div>
   </div>
-  <button class="refresh-btn" onclick="loadData()">↻</button>
   <div class="statbar" id="sb">—</div>
 </div>
 
@@ -141,18 +160,20 @@ body{font-family:"DM Sans",sans-serif;background:var(--bg);color:var(--text);min
 const PROXY='https://script.google.com/macros/s/AKfycbyoztFLuxotWSC6qIaYju8wjpl0yMt_sCHaMyiphvYkvcw_r9Hkz-2v0qMAHWQMOO1UrQ/exec', GID='198055218';
 const SKIP_KW=['резерв','поставить','ella games','inout/ella'];
 const ROWS=7, COLS=7;
+const BC={Neospin:'#6366f1',Crownslots:'#ec4899',Gunsbet:'#0ea5e9',Evospin:'#f59e0b'};
+const PROJECT_ORDER=['Neospin','Crownslots','Gunsbet','Evospin'];
 
 let placements=[];
-let collapsed=new Set();
-let currentFilter='all';
+let collapsedP=new Set(), collapsedProj=new Set();
+let currentFilter='all', dupMode=false;
 
 function cleanVal(v){
   if(v===null||v===undefined)return'';
   v=String(v).trim();
   if(['','nan','null','undefined','#n/a'].includes(v.toLowerCase()))return'';
-  if(/^\d+\.?\d*$/.test(v))return'';
   return v;
 }
+function isNumeric(v){return/^\d+\.?\d*$/.test(String(v).trim())}
 function shorten(n){
   return n.replace('NEOSPIN','NEO').replace('CROWNSLOTS','CROWN')
     .replace('GUNSBET','GUNS').replace('EVOSPIN','EVO')
@@ -160,6 +181,17 @@ function shorten(n){
     .replace('AUSTRALIA','AU').replace('GERMANY','DE').replace('CANADA','CA')
     .replace('NEW ZEALAND','NZ').replace(/\s*\(.*?\)/g,'').trim();
 }
+function getProject(name){
+  const u=name.toUpperCase();
+  if(u.includes('NEOSPIN'))return'Neospin';
+  if(u.includes('CROWNSLOTS'))return'Crownslots';
+  if(u.includes('GUNSBET'))return'Gunsbet';
+  if(u.includes('EVOSPIN'))return'Evospin';
+  if(u.includes('SLOTRUSH')||u.includes('BITSTAKE'))return'SR/BitStake';
+  if(u.includes('BEONBET'))return'BeOnBet';
+  return'Інші';
+}
+function norm(s){return s.toLowerCase().trim()}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 
 async function loadData(){
@@ -178,51 +210,81 @@ async function loadData(){
 function parseData(rows){
   placements=[];
   const header=rows[0]||[];
-  let rowCol=-1,placeCol=-1,statusCol=-1;
-  const pCols=[];
 
-  for(let i=0;i<header.length;i++){
-    const h=String(header[i]||'').toLowerCase().trim();
-    if(h==='row')rowCol=i;
-    else if(h==='place')placeCol=i;
-    else if(h.includes('сортировка')||h.includes('сортування'))statusCol=i;
-  }
+  // Find F=row col, G=place col by position (they have no text header, just numbers)
+  // F and G are after col E (index 4), so index 5 and 6
+  const rowCol=5, placeCol=6;
+  
+  // Status col = E (index 4) — "Сортировка в БО"
+  const statusCol=4;
 
-  // Find placement columns (after placeCol, non-empty, skip provider cols)
-  let i=Math.max(rowCol,placeCol,statusCol)+1;
+  // Placement columns start at H (index 7)
+  // Pattern: colH=placementName (header row), colH+1=empty(provider header?), colI=provider
+  // Actually: H=game, I=provider, J=empty separator, K=game, L=provider, M=empty...
+  // But header row 0: H="NEOSPIN AUSTRALIA Top...", I=empty, J=empty, K="NEOSPIN GERMANY...", etc.
+  
+  // Find placement headers: non-empty cells in header row starting from index 7
+  const pList=[];
+  let i=7;
   while(i<header.length){
     const h=String(header[i]||'').trim();
-    if(h&&!/^(game|provider|игра|провайдер)$/i.test(h)){
-      pCols.push({name:h,gameCol:i,provCol:i+1});
-      i+=3; // skip game, provider, empty
-    } else i++;
+    if(h&&h.length>3){
+      // This is a placement name. Game=col i, Provider=col i+1
+      pList.push({name:h,gameCol:i,provCol:i+1});
+      i+=3; // game + provider + separator
+    } else {
+      i++;
+    }
   }
 
-  // Parse slot data for each placement
-  for(const pc of pCols){
-    const slots=[];
-    for(let r=1;r<rows.length;r++){
-      const row=rows[r];
-      const rn=parseInt(row[rowCol])||0;
-      const pn=parseInt(row[placeCol])||0;
-      if(!rn||!pn)continue;
-      const status=cleanVal(row[statusCol]);
-      const isReady=status.toLowerCase().includes('готово');
-      const game=cleanVal(row[pc.gameCol]);
-      const prov=cleanVal(row[pc.provCol]);
-      const isRes=game&&SKIP_KW.some(k=>game.toLowerCase().includes(k));
-      slots.push({row:rn,place:pn,game:isRes?'':game,provider:prov,reserved:isRes,ready:isReady});
+  // Parse rows — each row = one position (row/place) with games for all placements
+  // Rows 1..N: col 5=row number, col 6=place number
+  // Note: col 5 and 6 may have merged cells in Sheet → only first row of group has value
+  let lastRow=1, lastPlace=1;
+  
+  // First pass: collect all (row,place) → status from A-E section
+  // A-E rows don't align 1:1 with positions — they're brand/category rows
+  // Status comes from col E of the SAME data row
+  
+  const slots_raw=[];
+  for(let r=1;r<rows.length;r++){
+    const row=rows[r];
+    const rv=cleanVal(row[rowCol]);
+    const pv=cleanVal(row[placeCol]);
+    const rn=rv&&isNumeric(rv)?parseInt(rv):null;
+    const pn=pv&&isNumeric(pv)?parseInt(pv):null;
+    
+    if(rn!==null)lastRow=rn;
+    if(pn!==null)lastPlace=pn;
+    
+    const status=cleanVal(row[statusCol]);
+    const isReady=status.toLowerCase().includes('готово');
+    
+    // Only include rows that have actual position data (row 1-7, place 1-7)
+    if(lastRow<1||lastRow>7||lastPlace<1||lastPlace>7)continue;
+    
+    const slotData={row:lastRow,place:lastPlace,ready:isReady,games:{}};
+    for(const p of pList){
+      const game=cleanVal(row[p.gameCol]);
+      const prov=cleanVal(row[p.provCol]);
+      const isSkip=game&&SKIP_KW.some(k=>game.toLowerCase().includes(k));
+      slotData.games[p.name]={game:isSkip?'':game,provider:prov,reserved:isSkip};
     }
+    slots_raw.push(slotData);
+  }
 
-    // Determine placement status
-    const total=ROWS*COLS;
+  // Build per-placement data
+  for(const p of pList){
+    const slots=slots_raw.map(s=>({
+      row:s.row,place:s.place,ready:s.ready,
+      ...s.games[p.name]
+    }));
     const filled=slots.filter(s=>s.game&&!s.reserved).length;
-    const ready=slots.filter(s=>s.ready&&s.game).length;
+    const readyCount=slots.filter(s=>s.ready&&s.game&&!s.reserved).length;
     let liveStatus='notset';
-    if(ready===filled&&filled>0)liveStatus='live';
-    else if(ready>0)liveStatus='partial';
-
-    placements.push({name:pc.name,slots,filled,total,liveStatus,readyCount:ready});
+    if(filled>0&&readyCount===filled)liveStatus='live';
+    else if(readyCount>0)liveStatus='partial';
+    placements.push({name:p.name,project:getProject(p.name),slots,filled,total:ROWS*COLS,liveStatus,readyCount});
   }
 }
 
@@ -233,75 +295,125 @@ function setFilter(f,btn){
   render();
 }
 
-function toggleCollapse(name){
-  const el=document.querySelector(`[data-placement="${CSS.escape(name)}"]`);
+function toggleDups(){
+  dupMode=!dupMode;
+  const btn=document.getElementById('dupBtn');
+  btn.classList.toggle('on',dupMode);
+  btn.textContent=dupMode?'⚑ Повтори ON':'⚑ Повтори';
+  document.body.classList.toggle('dup-mode',dupMode);
+}
+
+function toggleP(name){
+  const el=document.querySelector(`.placement-block[data-p="${CSS.escape(name)}"]`);
   if(!el)return;
-  if(collapsed.has(name)){collapsed.delete(name);el.classList.remove('collapsed')}
-  else{collapsed.add(name);el.classList.add('collapsed')}
+  if(collapsedP.has(name)){collapsedP.delete(name);el.classList.remove('collapsed')}
+  else{collapsedP.add(name);el.classList.add('collapsed')}
+}
+function toggleProj(proj){
+  const el=document.querySelector(`.project-block[data-proj="${CSS.escape(proj)}"]`);
+  if(!el)return;
+  if(collapsedProj.has(proj)){collapsedProj.delete(proj);el.classList.remove('collapsed')}
+  else{collapsedProj.add(proj);el.classList.add('collapsed')}
+}
+
+function renderGrid(p,dupSet){
+  const matrix={};
+  for(const s of p.slots)matrix[`${s.row}_${s.place}`]=s;
+  let html='';
+  for(let r=1;r<=ROWS;r++){
+    html+=`<div class="row-wrap"><div class="row-label">Ряд ${r}</div><div class="slot-row">`;
+    for(let pl=1;pl<=COLS;pl++){
+      const s=matrix[`${r}_${pl}`];
+      if(!s||(!s.game&&!s.reserved)){
+        html+=`<div class="slot empty"><div class="pos">${r}.${pl}</div><div class="fr">вільно</div></div>`;
+      } else if(s.reserved){
+        html+=`<div class="slot reserved"><div class="pos">${r}.${pl}</div><div class="g">резерв</div></div>`;
+      } else {
+        const isDup=dupSet&&dupSet.has(norm(s.game));
+        const g=s.game.length>22?s.game.slice(0,21)+'…':s.game;
+        const pv=s.provider?s.provider.split('/')[0].trim().slice(0,13):'';
+        html+=`<div class="slot filled${isDup?' is-dup':''}" style="--bcolor:${BC[p.project]||'#6366f1'}">
+          ${isDup?`<div class="dup-badge">×${dupSet.get(norm(s.game))}</div>`:''}
+          <div class="sdot ${s.ready?'ready':'pending'}"></div>
+          <div class="pos">${r}.${pl}</div>
+          <div class="g">${esc(g)}</div>
+          ${pv?`<div class="p">${esc(pv)}</div>`:''}
+        </div>`;
+      }
+    }
+    html+=`</div></div>`;
+  }
+  return html;
 }
 
 function render(){
-  const filtered=placements.filter(p=>{
-    if(currentFilter==='all')return true;
-    return p.liveStatus===currentFilter;
-  });
+  // Group by project
+  const groups={};
+  for(const p of placements){
+    if(currentFilter!=='all'&&p.liveStatus!==currentFilter)continue;
+    if(!groups[p.project])groups[p.project]=[];
+    groups[p.project].push(p);
+  }
 
-  if(!filtered.length){
-    document.getElementById('board').innerHTML='<div class="empty-state">Немає плейсментів для обраного фільтру</div>';
-    updateStat();return;
+  // Build dup maps per project (count across all slots of all placements in project)
+  const projDupMaps={};
+  for(const proj of Object.keys(groups)){
+    const gameCount=new Map();
+    for(const p of groups[proj]){
+      for(const s of p.slots){
+        if(s.game&&!s.reserved){
+          const k=norm(s.game);
+          gameCount.set(k,(gameCount.get(k)||0)+1);
+        }
+      }
+    }
+    // Keep only dups (count > 1)
+    const dupMap=new Map();
+    for(const[k,v]of gameCount)if(v>1)dupMap.set(k,v);
+    projDupMaps[proj]=dupMap;
   }
 
   let html='';
-  for(const p of filtered){
-    const isCol=collapsed.has(p.name);
-    const liveLabel=p.liveStatus==='live'?'LIVE':p.liveStatus==='partial'?'Частково':'Not set';
+  let tF=0,tT=0;
 
-    // Build matrix
-    const matrix={};
-    for(const s of p.slots)matrix[`${s.row}_${s.place}`]=s;
+  const projOrder=[...PROJECT_ORDER,...Object.keys(groups).filter(p=>!PROJECT_ORDER.includes(p))];
+  
+  for(const proj of projOrder){
+    if(!groups[proj])continue;
+    const col=BC[proj]||'#6366f1';
+    const pF=groups[proj].reduce((a,p)=>a+p.filled,0);
+    const pT=groups[proj].reduce((a,p)=>a+p.total,0);
+    tF+=pF;tT+=pT;
+    const isColProj=collapsedProj.has(proj);
 
-    let gridHtml='';
-    for(let r=1;r<=ROWS;r++){
-      gridHtml+=`<div class="row-wrap"><div class="row-label">Ряд ${r}</div><div class="slot-row">`;
-      for(let pl=1;pl<=COLS;pl++){
-        const s=matrix[`${r}_${pl}`];
-        if(!s||(!s.game&&!s.reserved)){
-          gridHtml+=`<div class="slot empty"><div class="pos">${r}.${pl}</div><div class="fr">вільно</div></div>`;
-        } else if(s.reserved){
-          gridHtml+=`<div class="slot reserved"><div class="pos">${r}.${pl}</div><div class="g">резерв</div></div>`;
-        } else {
-          const g=s.game.length>22?s.game.slice(0,21)+'…':s.game;
-          const pv=s.provider?s.provider.split('/')[0].trim().slice(0,13):'';
-          gridHtml+=`<div class="slot filled">
-            <div class="sdot ${s.ready?'ready':'pending'}"></div>
-            <div class="pos">${r}.${pl}</div>
-            <div class="g">${esc(g)}</div>
-            ${pv?`<div class="p">${esc(pv)}</div>`:''}
-          </div>`;
-        }
-      }
-      gridHtml+=`</div></div>`;
-    }
-
-    html+=`<div class="placement-block${isCol?' collapsed':''}" data-placement="${esc(p.name)}">
-      <div class="placement-hdr" onclick="toggleCollapse('${p.name.replace(/'/g,"\'")}')">
-        <span class="placement-name">${esc(shorten(p.name))}</span>
-        <span class="placement-meta">${p.filled}/${p.total}</span>
-        <span class="live-badge ${p.liveStatus}">${liveLabel}</span>
-        <span class="chevron">▾</span>
+    html+=`<div class="project-block${isColProj?' collapsed':''}" data-proj="${esc(proj)}">
+      <div class="project-hdr" style="--bcolor:${col}" onclick="toggleProj('${proj}')">
+        <span class="project-name">${esc(proj)}</span>
+        <span class="project-stat">${pF}/${pT} · ${Math.round(pF/pT*100)}%</span>
+        <span class="proj-chevron">▾</span>
       </div>
-      <div class="placement-body">${gridHtml}</div>
-    </div>`;
+      <div class="project-body">`;
+
+    const dupMap=projDupMaps[proj];
+    for(const p of groups[proj]){
+      const isColP=collapsedP.has(p.name);
+      const liveLabel=p.liveStatus==='live'?'LIVE':p.liveStatus==='partial'?'Частково':'Not set';
+      html+=`<div class="placement-block${isColP?' collapsed':''}" data-p="${esc(p.name)}">
+        <div class="placement-hdr" style="--bcolor:${col}" onclick="toggleP('${p.name.replace(/'/g,"\'")}')">
+          <span class="placement-name">${esc(shorten(p.name))}</span>
+          <span class="placement-meta">${p.filled}/${p.total}</span>
+          <span class="live-badge ${p.liveStatus}">${liveLabel}</span>
+          <span class="chevron">▾</span>
+        </div>
+        <div class="placement-body">${renderGrid(p,dupMode?dupMap:null)}</div>
+      </div>`;
+    }
+    html+=`</div></div>`;
   }
 
+  if(!html)html='<div class="empty-state">Немає плейсментів для обраного фільтру</div>';
   document.getElementById('board').innerHTML=html;
-  updateStat();
-}
 
-function updateStat(){
-  const vis=placements.filter(p=>currentFilter==='all'||p.liveStatus===currentFilter);
-  const tF=vis.reduce((a,p)=>a+p.filled,0);
-  const tT=vis.reduce((a,p)=>a+p.total,0);
   const today=new Date().toLocaleDateString('uk-UA',{day:'2-digit',month:'2-digit',year:'numeric'});
   document.getElementById('sb').innerHTML=
     `<span class="sv">■ ${tF}/${tT}</span> · ${tT?Math.round(tF/tT*100):0}% · ${today}`;
