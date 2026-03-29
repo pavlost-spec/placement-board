@@ -240,28 +240,30 @@ function parseData(rows){
   // Parse rows — each row = one position (row/place) with games for all placements
   // Rows 1..N: col 5=row number, col 6=place number
   // Note: col 5 and 6 may have merged cells in Sheet → only first row of group has value
-  let lastRow=1, lastPlace=1;
-  
-  // First pass: collect all (row,place) → status from A-E section
-  // A-E rows don't align 1:1 with positions — they're brand/category rows
-  // Status comes from col E of the SAME data row
+  let lastRow=0, lastPlace=0;
   
   const slots_raw=[];
   for(let r=1;r<rows.length;r++){
     const row=rows[r];
-    const rv=cleanVal(row[rowCol]);
-    const pv=cleanVal(row[placeCol]);
-    const rn=rv&&isNumeric(rv)?parseInt(rv):null;
-    const pn=pv&&isNumeric(pv)?parseInt(pv):null;
-    
-    if(rn!==null)lastRow=rn;
-    if(pn!==null)lastPlace=pn;
-    
+    const rv=String(row[rowCol]||'').trim();
+    const pv=String(row[placeCol]||'').trim();
+    const rn=rv&&/^\d+$/.test(rv)?parseInt(rv):null;
+    const pn=pv&&/^\d+$/.test(pv)?parseInt(pv):null;
+
+    // Update row/place — merged cells come as empty, so auto-increment place
+    if(rn!==null){lastRow=rn;}
+    if(pn!==null){lastPlace=pn;}
+    else if(lastPlace>0&&lastPlace<COLS){lastPlace++;}
+    else if(lastPlace>=COLS){lastPlace=1;} // shouldn't happen but safety
+
+    if(lastRow<1||lastRow>ROWS||lastPlace<1||lastPlace>COLS)continue;
+
+    // Skip rows with no game data at all (empty data rows between brand sections)
+    const hasAnyGame=pList.some(p=>{const g=String(row[p.gameCol]||'').trim();return g&&g!=='';});
+    if(!hasAnyGame&&!pn&&!rn)continue;
+
     const status=cleanVal(row[statusCol]);
     const isReady=status.toLowerCase().includes('готово');
-    
-    // Only include rows that have actual position data (row 1-7, place 1-7)
-    if(lastRow<1||lastRow>7||lastPlace<1||lastPlace>7)continue;
     
     const slotData={row:lastRow,place:lastPlace,ready:isReady,games:{}};
     for(const p of pList){
