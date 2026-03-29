@@ -294,7 +294,6 @@ function parseData(rows){
       const isSkip=game&&SKIP_KW.some(k=>game.toLowerCase().includes(k));
       slotData.games[p.name]={game:isSkip?'':game,provider:prov,reserved:isSkip};
     }
-    if(slots_raw.length===0)console.log('First slot:',JSON.stringify(slotData));
     slots_raw.push(slotData);
   }
 
@@ -356,7 +355,7 @@ function renderGrid(p,dupSet){
       } else {
         const isDup=dupSet&&dupSet.has(norm(s.game));
         const g=s.game.length>22?s.game.slice(0,21)+'…':s.game;
-        const pv=s.provider?s.provider.split('/')[0].trim().slice(0,13):'';
+        const pv=s.provider?s.provider.split('/')[0].trim().slice(0,18):'';
         html+=`<div class="slot filled${isDup?' is-dup':''}" style="--bcolor:${BC[p.project]||'#6366f1'}">
           ${isDup?`<div class="dup-badge">×${dupSet.get(norm(s.game))}</div>`:''}
           <div class="sdot ${s.ready?'ready':'pending'}"></div>
