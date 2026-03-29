@@ -294,6 +294,7 @@ function parseData(rows){
       const isSkip=game&&SKIP_KW.some(k=>game.toLowerCase().includes(k));
       slotData.games[p.name]={game:isSkip?'':game,provider:prov,reserved:isSkip};
     }
+    if(slots_raw.length===0)console.log('First slot:',JSON.stringify(slotData));
     slots_raw.push(slotData);
   }
 
