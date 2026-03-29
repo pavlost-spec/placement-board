@@ -159,7 +159,12 @@ body.dup-mode .slot.filled.is-dup .dup-badge{opacity:1}
 <div class="main" id="board"></div>
 
 <script>
-const PROXY='https://script.google.com/macros/s/AKfycbyoztFLuxotWSC6qIaYju8wjpl0yMt_sCHaMyiphvYkvcw_r9Hkz-2v0qMAHWQMOO1UrQ/exec', GID='198055218';
+const PROXY='https://script.google.com/macros/s/AKfycbyoztFLuxotWSC6qIaYju8wjpl0yMt_sCHaMyiphvYkvcw_r9Hkz-2v0qMAHWQMOO1UrQ/exec';
+const DEFAULT_MONTHS={'Март 2026':'198055218','Квітень 2026':'811674113'};
+function loadMonths(){try{const s=localStorage.getItem('placement_months');return s?JSON.parse(s):null;}catch(e){return null;}}
+function saveMonths(m){try{localStorage.setItem('placement_months',JSON.stringify(m));}catch(e){}}
+let MONTHS=loadMonths()||{...DEFAULT_MONTHS};
+let GID=Object.values(MONTHS)[0];
 const SKIP_KW=['резерв','поставить','ella games','inout/ella'];
 const ROWS=7, COLS=7;
 const BC={Neospin:'#6366f1',Crownslots:'#ec4899',Gunsbet:'#0ea5e9',Evospin:'#f59e0b'};
