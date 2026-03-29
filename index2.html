@@ -264,7 +264,7 @@ function parseData(rows){
     const h=String(header[i]||'').trim();
     if(h&&h.length>3){
       // This is a placement name. Game=col i, Provider=col i+1
-      pList.push({name:h,gameCol:i+1,provCol:i+2});
+      pList.push({name:h,gameCol:i,provCol:i+1});
       i+=3; // game + provider + separator
     } else {
       i++;
@@ -277,7 +277,7 @@ function parseData(rows){
   let pos=0;
   for(let r=1;r<rows.length;r++){
     const row=rows[r];
-    const hasGame=pList.some(p=>{const g=String(row[p.gameCol]||'').trim();return g.length>0;});
+    const hasGame=pList.some(p=>{const g=String(row[p.gameCol]||'').trim();return g.length>2;});
     const pv=String(row[placeCol]||'').trim();
     const hasPlace=/^\d+$/.test(pv);
     if(!hasGame&&!hasPlace)continue;
