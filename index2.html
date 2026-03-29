@@ -230,7 +230,7 @@ function parseData(rows){
     const h=String(header[i]||'').trim();
     if(h&&h.length>3){
       // This is a placement name. Game=col i, Provider=col i+1
-      pList.push({name:h,gameCol:i,provCol:i+1});
+      pList.push({name:h,gameCol:i+1,provCol:i+2});
       i+=3; // game + provider + separator
     } else {
       i++;
