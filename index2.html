@@ -133,7 +133,9 @@ body.dup-mode .slot.filled.is-dup .dup-badge{opacity:1}
 </div>
 
 <div class="topbar">
-  <div class="logo">♟ GRID / МАРТ 2026</div>
+  <div class="logo">♟ GRID</div>
+  <select style="font-family:'DM Mono',monospace;font-size:11px;font-weight:500;padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;outline:none" id="monthSel" onchange="switchMonth(this.value)"></select>
+  <button onclick="addMonth()" style="font-size:13px;width:26px;height:26px;border-radius:50%;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0" title="Додати місяць">+</button>
   <div class="sep"></div>
   <span class="flabel">Статус</span>
   <div style="display:flex;gap:4px" id="filterBtns">
@@ -194,6 +196,33 @@ function getProject(name){
 function norm(s){return s.toLowerCase().trim()}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 
+async function addMonth(){
+  const name=prompt('Назва місяця (напр. Травень 2026):');
+  if(!name||!name.trim())return;
+  const gid=prompt('GID листа (число з URL після gid=):');
+  if(!gid||!/^\d+$/.test(gid.trim())){alert('GID має бути числом');return;}
+  MONTHS[name.trim()]=gid.trim();
+  saveMonths(MONTHS);
+  buildMonthSel();
+  switchMonth(gid.trim());
+}
+function buildMonthSel(){
+  const sel=document.getElementById('monthSel');
+  if(!sel)return;
+  sel.innerHTML='';
+  for(const[name,gid]of Object.entries(MONTHS)){
+    const opt=document.createElement('option');
+    opt.value=gid;opt.textContent=name;
+    if(gid===GID)opt.selected=true;
+    sel.appendChild(opt);
+  }
+}
+function switchMonth(gid){
+  GID=gid;
+  placements=[];
+  collapsedP=new Set();collapsedProj=new Set();
+  loadData();
+}
 async function loadData(){
   document.getElementById('loader').classList.remove('hide');
   try{
@@ -237,35 +266,23 @@ function parseData(rows){
     }
   }
 
-  // Parse rows — each row = one position (row/place) with games for all placements
-  // Rows 1..N: col 5=row number, col 6=place number
-  // Note: col 5 and 6 may have merged cells in Sheet → only first row of group has value
-  let lastRow=0, lastPlace=0;
-  
+  // Sequential position counting — ignore merged cells entirely
+  // Each row with game data = next position (1..49), row=ceil(pos/7), place=((pos-1)%7)+1
   const slots_raw=[];
+  let pos=0;
   for(let r=1;r<rows.length;r++){
     const row=rows[r];
-    const rv=String(row[rowCol]||'').trim();
+    const hasGame=pList.some(p=>{const g=String(row[p.gameCol]||'').trim();return g.length>0;});
     const pv=String(row[placeCol]||'').trim();
-    const rn=rv&&/^\d+$/.test(rv)?parseInt(rv):null;
-    const pn=pv&&/^\d+$/.test(pv)?parseInt(pv):null;
-
-    // Update row/place — merged cells come as empty, so auto-increment place
-    if(rn!==null){lastRow=rn;}
-    if(pn!==null){lastPlace=pn;}
-    else if(lastPlace>0&&lastPlace<COLS){lastPlace++;}
-    else if(lastPlace>=COLS){lastPlace=1;} // shouldn't happen but safety
-
-    if(lastRow<1||lastRow>ROWS||lastPlace<1||lastPlace>COLS)continue;
-
-    // Skip rows with no game data at all (empty data rows between brand sections)
-    const hasAnyGame=pList.some(p=>{const g=String(row[p.gameCol]||'').trim();return g&&g!=='';});
-    if(!hasAnyGame&&!pn&&!rn)continue;
-
+    const hasPlace=/^\d+$/.test(pv);
+    if(!hasGame&&!hasPlace)continue;
+    pos++;
+    if(pos>ROWS*COLS)break;
+    const rowNum=Math.ceil(pos/COLS);
+    const placeNum=((pos-1)%COLS)+1;
     const status=cleanVal(row[statusCol]);
     const isReady=status.toLowerCase().includes('готово');
-    
-    const slotData={row:lastRow,place:lastPlace,ready:isReady,games:{}};
+    const slotData={row:rowNum,place:placeNum,ready:isReady,games:{}};
     for(const p of pList){
       const game=cleanVal(row[p.gameCol]);
       const prov=cleanVal(row[p.provCol]);
@@ -421,6 +438,7 @@ function render(){
     `<span class="sv">■ ${tF}/${tT}</span> · ${tT?Math.round(tF/tT*100):0}% · ${today}`;
 }
 
+buildMonthSel();
 loadData();
 </script>
 </body>
