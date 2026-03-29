@@ -178,7 +178,16 @@ function shorten(name){
 function parseSheetData(rows){
   const headerRow=rows[0]||[];
   const placements={};
-  for(let i=5;i<headerRow.length;i++){
+  // Auto-detect: find first column with a placement name (non-empty, non-numeric, not a fixed header)
+  const FIXED_HEADERS=['бренд','категория','категорія','гео','локаль','менеджер','приоритет','пріоритет','сортировка','сортування'];
+  let startCol=5;
+  for(let i=0;i<headerRow.length;i++){
+    const v=cleanVal(headerRow[i]).toLowerCase();
+    if(!v)continue;
+    if(FIXED_HEADERS.some(h=>v.includes(h)))continue;
+    startCol=i;break;
+  }
+  for(let i=startCol;i<headerRow.length;i++){
     const v=cleanVal(headerRow[i]);
     if(v&&!/^\d+$/.test(v))placements[i]=v;
   }
