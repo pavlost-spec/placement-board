@@ -242,38 +242,70 @@ async function loadData(){
   document.getElementById('loader').classList.add('hide');
 }
 
+// Parse placement name like "NEOSPIN AUSTRALIA Top (en-AU)"
+// Returns {brand, category, locale} for lookup
+function parsePlacementKey(name){
+  // Extract locale from parentheses e.g. (en-AU)
+  const locM=name.match(/\(([^)]+)\)/);
+  const locale=locM?locM[1].toUpperCase().trim():'';
+  // Remove locale part
+  const base=name.replace(/\s*\([^)]*\)/,'').trim();
+  // Last word before end (or before locale) is category: Top, Middle, Bottom, New, etc.
+  const parts=base.trim().split(/\s+/);
+  const category=parts[parts.length-1]||'';
+  // Everything before category = brand (e.g. "NEOSPIN AUSTRALIA")
+  const brand=parts.slice(0,-1).join(' ');
+  return{brand:brand.toUpperCase().trim(),category:category.toUpperCase().trim(),locale};
+}
+
 function parseData(rows){
   placements=[];
   const header=rows[0]||[];
 
-  // Find F=row col, G=place col by position (they have no text header, just numbers)
-  // F and G are after col E (index 4), so index 5 and 6
   const rowCol=5, placeCol=6;
-  
-  // Status col = E (index 4) — "Сортировка в БО"
-  const statusCol=4;
+  const statusCol=4; // col E
 
-  // Placement columns start at H (index 7)
-  // Pattern: colH=placementName (header row), colH+1=empty(provider header?), colI=provider
-  // Actually: H=game, I=provider, J=empty separator, K=game, L=provider, M=empty...
-  // But header row 0: H="NEOSPIN AUSTRALIA Top...", I=empty, J=empty, K="NEOSPIN GERMANY...", etc.
-  
-  // Find placement headers: non-empty cells in header row starting from index 7
+  // --- Build placement→status lookup from ALL rows (cols A,B,C,E) ---
+  // Col A=brand(0), B=category(1), C=locale(2), E=status(4)
+  // Key: "BRAND|CATEGORY|LOCALE"
+  const statusLookup=new Map();
+  for(let r=1;r<rows.length;r++){
+    const row=rows[r];
+    const a=cleanVal(row[0]).toUpperCase();
+    const b=cleanVal(row[1]).toUpperCase();
+    const c=cleanVal(row[2]).toUpperCase();
+    const e=cleanVal(row[4]);
+    if(a&&b&&c&&e){
+      const key=`${a}|${b}|${c}`;
+      // Only store first match (header row for that placement)
+      if(!statusLookup.has(key))statusLookup.set(key,e);
+    }
+  }
+
+  // Find placement headers in header row starting at col 7
   const pList=[];
   let i=7;
   while(i<header.length){
     const h=String(header[i]||'').trim();
     if(h&&h.length>3){
-      // This is a placement name. Game=col i, Provider=col i+1
       pList.push({name:h,gameCol:i,provCol:i+1});
-      i+=3; // game + provider + separator
+      i+=3;
     } else {
       i++;
     }
   }
 
-  // Sequential position counting — ignore merged cells entirely
-  // Each row with game data = next position (1..49), row=ceil(pos/7), place=((pos-1)%7)+1
+  // Pre-compute ready status per placement from lookup
+  const placementReady={};
+  for(const p of pList){
+    const {brand,category,locale}=parsePlacementKey(p.name);
+    // Try exact key first, then fallback variations
+    const key=`${brand}|${category}|${locale}`;
+    const status=statusLookup.get(key)||'';
+    placementReady[p.name]=status.toLowerCase().includes('готово');
+  }
+
+  // Sequential position counting
   const slots_raw=[];
   let pos=0;
   for(let r=1;r<rows.length;r++){
@@ -286,9 +318,7 @@ function parseData(rows){
     if(pos>ROWS*COLS)break;
     const rowNum=Math.ceil(pos/COLS);
     const placeNum=((pos-1)%COLS)+1;
-    const status=cleanVal(row[statusCol]);
-    const isReady=status.toLowerCase().includes('готово');
-    const slotData={row:rowNum,place:placeNum,ready:isReady,games:{}};
+    const slotData={row:rowNum,place:placeNum,games:{}};
     for(const p of pList){
       const game=cleanVal(row[p.gameCol]);
       const prov=cleanVal(row[p.provCol]);
@@ -298,14 +328,16 @@ function parseData(rows){
     slots_raw.push(slotData);
   }
 
-  // Build per-placement data
+  // Build per-placement data — ready status comes from lookup, not per-slot row
   for(const p of pList){
+    const isReady=placementReady[p.name]||false;
     const slots=slots_raw.map(s=>({
-      row:s.row,place:s.place,ready:s.ready,
+      row:s.row,place:s.place,
+      ready:isReady, // same for all slots in this placement
       ...s.games[p.name]
     }));
     const filled=slots.filter(s=>s.game&&!s.reserved).length;
-    const readyCount=slots.filter(s=>s.ready&&s.game&&!s.reserved).length;
+    const readyCount=isReady?slots.filter(s=>s.game&&!s.reserved).length:0;
     let liveStatus='notset';
     if(filled>0&&readyCount===filled)liveStatus='live';
     else if(readyCount>0)liveStatus='partial';
