@@ -242,43 +242,49 @@ async function loadData(){
   document.getElementById('loader').classList.add('hide');
 }
 
-// Parse placement name like "NEOSPIN AUSTRALIA Top (en-AU)"
-// Returns {brand, category, locale} for lookup
-function parsePlacementKey(name){
-  // Extract locale from parentheses e.g. (en-AU)
+// Map placement header brand words → col A values (case-insensitive match)
+// e.g. "NEOSPIN AUSTRALIA Top (en-AU, en-NZ)" → brand="Neospin", category="Top", locales=["en-AU","en-NZ"]
+function parsePlacement(name){
+  // Extract locales from parentheses: (en-AU, en-NZ) → ["EN-AU","EN-NZ"]
   const locM=name.match(/\(([^)]+)\)/);
-  const locale=locM?locM[1].toUpperCase().trim():'';
-  // Remove locale part
+  const locales=locM
+    ?locM[1].split(',').map(s=>s.trim().toUpperCase()).filter(Boolean)
+    :[];
+  // Strip locale part, then split remaining words
   const base=name.replace(/\s*\([^)]*\)/,'').trim();
-  // Last word before end (or before locale) is category: Top, Middle, Bottom, New, etc.
-  const parts=base.trim().split(/\s+/);
-  const category=parts[parts.length-1]||'';
-  // Everything before category = brand (e.g. "NEOSPIN AUSTRALIA")
-  const brand=parts.slice(0,-1).join(' ');
-  return{brand:brand.toUpperCase().trim(),category:category.toUpperCase().trim(),locale};
+  const words=base.split(/\s+/);
+  // Last word = category (Top, Middle, Bottom, New, Original, Slots, Jackpot, etc.)
+  const category=words[words.length-1]||'';
+  // First word(s) = brand identifier — map to col A value
+  // Known brand words in placement headers: NEOSPIN, CROWNSLOTS, GUNSBET, EVOSPIN, SLOTRUSH, BITSTAKE, BEONBET, 1REDBET
+  const brandWord=words[0]||'';
+  const BRAND_MAP={
+    'NEOSPIN':'Neospin','CROWNSLOTS':'Crownslots','GUNSBET':'Gunsbet',
+    'EVOSPIN':'Evospin','SLOTRUSH':'Slotrush','BITSTAKE':'Bitstake',
+    'BEONBET':'Beonbet','1REDBET':'1redbet'
+  };
+  const brand=BRAND_MAP[brandWord.toUpperCase()]||brandWord;
+  return{brand,category:category.toUpperCase(),locales};
 }
 
 function parseData(rows){
   placements=[];
   const header=rows[0]||[];
+  const placeCol=6; // G
 
-  const rowCol=5, placeCol=6;
-  const statusCol=4; // col E
-
-  // --- Build placement→status lookup from ALL rows (cols A,B,C,E) ---
+  // --- Build statusLookup: "brand|category|locale" → bool (готово) ---
   // Col A=brand(0), B=category(1), C=locale(2), E=status(4)
-  // Key: "BRAND|CATEGORY|LOCALE"
   const statusLookup=new Map();
   for(let r=1;r<rows.length;r++){
     const row=rows[r];
-    const a=cleanVal(row[0]).toUpperCase();
-    const b=cleanVal(row[1]).toUpperCase();
-    const c=cleanVal(row[2]).toUpperCase();
-    const e=cleanVal(row[4]);
-    if(a&&b&&c&&e){
-      const key=`${a}|${b}|${c}`;
-      // Only store first match (header row for that placement)
-      if(!statusLookup.has(key))statusLookup.set(key,e);
+    const a=cleanVal(row[0]);   // e.g. "Neospin"
+    const b=cleanVal(row[1]);   // e.g. "Top"
+    const c=cleanVal(row[2]);   // e.g. "EN-AU"
+    const e=cleanVal(row[4]);   // e.g. "Готово"
+    if(a&&b&&c){
+      const key=`${a.toLowerCase()}|${b.toUpperCase()}|${c.toUpperCase()}`;
+      if(!statusLookup.has(key))
+        statusLookup.set(key,e.toLowerCase().includes('готово'));
     }
   }
 
@@ -290,19 +296,25 @@ function parseData(rows){
     if(h&&h.length>3){
       pList.push({name:h,gameCol:i,provCol:i+1});
       i+=3;
-    } else {
-      i++;
-    }
+    } else { i++; }
   }
 
-  // Pre-compute ready status per placement from lookup
+  // Pre-compute ready status per placement
+  // A placement is ready if ANY of its locale rows has Готово
   const placementReady={};
   for(const p of pList){
-    const {brand,category,locale}=parsePlacementKey(p.name);
-    // Try exact key first, then fallback variations
-    const key=`${brand}|${category}|${locale}`;
-    const status=statusLookup.get(key)||'';
-    placementReady[p.name]=status.toLowerCase().includes('готово');
+    const {brand,category,locales}=parsePlacement(p.name);
+    const bKey=brand.toLowerCase();
+    let ready=false;
+    if(locales.length===0){
+      // No locale in name — try brand+category with locale "ALL"
+      ready=statusLookup.get(`${bKey}|${category}|ALL`)||false;
+    } else {
+      for(const loc of locales){
+        if(statusLookup.get(`${bKey}|${category}|${loc}`)){ready=true;break;}
+      }
+    }
+    placementReady[p.name]=ready;
   }
 
   // Sequential position counting
@@ -328,19 +340,18 @@ function parseData(rows){
     slots_raw.push(slotData);
   }
 
-  // Build per-placement data — ready status comes from lookup, not per-slot row
+  // Build per-placement data
   for(const p of pList){
     const isReady=placementReady[p.name]||false;
     const slots=slots_raw.map(s=>({
       row:s.row,place:s.place,
-      ready:isReady, // same for all slots in this placement
+      ready:isReady,
       ...s.games[p.name]
     }));
     const filled=slots.filter(s=>s.game&&!s.reserved).length;
-    const readyCount=isReady?slots.filter(s=>s.game&&!s.reserved).length:0;
+    const readyCount=isReady?filled:0;
     let liveStatus='notset';
-    if(filled>0&&readyCount===filled)liveStatus='live';
-    else if(readyCount>0)liveStatus='partial';
+    if(filled>0&&isReady)liveStatus='live';
     placements.push({name:p.name,project:getProject(p.name),slots,filled,total:ROWS*COLS,liveStatus,readyCount});
   }
 }
