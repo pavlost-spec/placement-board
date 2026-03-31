@@ -168,8 +168,9 @@ let MONTHS=loadMonths()||{...DEFAULT_MONTHS};
 let GID=Object.values(MONTHS)[0];
 const SKIP_KW=['reserve','поставить','ella games','inout/ella'];
 const ROWS=7, COLS=7;
-const BC={Neospin:'#6366f1',Crownslots:'#ec4899',Gunsbet:'#0ea5e9',Evospin:'#f59e0b'};
-const PROJECT_ORDER=['Neospin','Crownslots','Gunsbet','Evospin'];
+const BC={Neospin:'#6366f1',Crownslots:'#ec4899',Gunsbet:'#0ea5e9',Evospin:'#f59e0b','SR/BitStake':'#10b981',BeOnBet:'#8b5cf6','1RedBet':'#ef4444',Promo:'#6b7280'};
+function getBrandColor(proj){return BC[proj]||'#6b7280';}
+const PROJECT_ORDER=['Neospin','Crownslots','Gunsbet','Evospin','SR/BitStake','BeOnBet','1RedBet'];
 
 let placements=[];
 let collapsedP=new Set(), collapsedProj=new Set();
@@ -197,7 +198,8 @@ function getProject(name){
   if(u.includes('EVOSPIN'))return'Evospin';
   if(u.includes('SLOTRUSH')||u.includes('BITSTAKE'))return'SR/BitStake';
   if(u.includes('BEONBET'))return'BeOnBet';
-  return'Інші';
+  if(u.includes('1REDBET'))return'1RedBet';
+  return'Promo';
 }
 function norm(s){return s.toLowerCase().trim()}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
@@ -242,82 +244,38 @@ async function loadData(){
   document.getElementById('loader').classList.add('hide');
 }
 
-// Map placement header brand words → col A values (case-insensitive match)
-// e.g. "NEOSPIN AUSTRALIA Top (en-AU, en-NZ)" → brand="Neospin", category="Top", locales=["en-AU","en-NZ"]
-function parsePlacement(name){
-  // Extract locales from parentheses: (en-AU, en-NZ) → ["EN-AU","EN-NZ"]
-  const locM=name.match(/\(([^)]+)\)/);
-  const locales=locM
-    ?locM[1].split(',').map(s=>s.trim().toUpperCase()).filter(Boolean)
-    :[];
-  // Strip locale part, then split remaining words
-  const base=name.replace(/\s*\([^)]*\)/,'').trim();
-  const words=base.split(/\s+/);
-  // Last word = category (Top, Middle, Bottom, New, Original, Slots, Jackpot, etc.)
-  const category=words[words.length-1]||'';
-  // First word(s) = brand identifier — map to col A value
-  // Known brand words in placement headers: NEOSPIN, CROWNSLOTS, GUNSBET, EVOSPIN, SLOTRUSH, BITSTAKE, BEONBET, 1REDBET
-  const brandWord=words[0]||'';
-  const BRAND_MAP={
-    'NEOSPIN':'Neospin','CROWNSLOTS':'Crownslots','GUNSBET':'Gunsbet',
-    'EVOSPIN':'Evospin','SLOTRUSH':'Slotrush','BITSTAKE':'Bitstake',
-    'BEONBET':'Beonbet','1REDBET':'1redbet'
-  };
-  const brand=BRAND_MAP[brandWord.toUpperCase()]||brandWord;
-  return{brand,category:category.toUpperCase(),locales};
-}
-
 function parseData(rows){
   placements=[];
   const header=rows[0]||[];
-  const placeCol=6; // G
 
-  // --- Build statusLookup: "brand|category|locale" → bool (готово) ---
-  // Col A=brand(0), B=category(1), C=locale(2), E=status(4)
-  const statusLookup=new Map();
-  for(let r=1;r<rows.length;r++){
-    const row=rows[r];
-    const a=cleanVal(row[0]);   // e.g. "Neospin"
-    const b=cleanVal(row[1]);   // e.g. "Top"
-    const c=cleanVal(row[2]);   // e.g. "EN-AU"
-    const e=cleanVal(row[4]);   // e.g. "Готово"
-    if(a&&b&&c){
-      const key=`${a.toLowerCase()}|${b.toUpperCase()}|${c.toUpperCase()}`;
-      if(!statusLookup.has(key))
-        statusLookup.set(key,e.toLowerCase().includes('готово'));
-    }
-  }
+  // Find F=row col, G=place col by position (they have no text header, just numbers)
+  // F and G are after col E (index 4), so index 5 and 6
+  const rowCol=5, placeCol=6;
+  
+  // Status col = E (index 4) — "Сортировка в БО"
+  const statusCol=4;
 
-  // Find placement headers in header row starting at col 7
+  // Placement columns start at H (index 7)
+  // Pattern: colH=placementName (header row), colH+1=empty(provider header?), colI=provider
+  // Actually: H=game, I=provider, J=empty separator, K=game, L=provider, M=empty...
+  // But header row 0: H="NEOSPIN AUSTRALIA Top...", I=empty, J=empty, K="NEOSPIN GERMANY...", etc.
+  
+  // Find placement headers: non-empty cells in header row starting from index 7
   const pList=[];
   let i=7;
   while(i<header.length){
     const h=String(header[i]||'').trim();
     if(h&&h.length>3){
+      // This is a placement name. Game=col i, Provider=col i+1
       pList.push({name:h,gameCol:i,provCol:i+1});
-      i+=3;
-    } else { i++; }
-  }
-
-  // Pre-compute ready status per placement
-  // A placement is ready if ANY of its locale rows has Готово
-  const placementReady={};
-  for(const p of pList){
-    const {brand,category,locales}=parsePlacement(p.name);
-    const bKey=brand.toLowerCase();
-    let ready=false;
-    if(locales.length===0){
-      // No locale in name — try brand+category with locale "ALL"
-      ready=statusLookup.get(`${bKey}|${category}|ALL`)||false;
+      i+=3; // game + provider + separator
     } else {
-      for(const loc of locales){
-        if(statusLookup.get(`${bKey}|${category}|${loc}`)){ready=true;break;}
-      }
+      i++;
     }
-    placementReady[p.name]=ready;
   }
 
-  // Sequential position counting
+  // Sequential position counting — ignore merged cells entirely
+  // Each row with game data = next position (1..49), row=ceil(pos/7), place=((pos-1)%7)+1
   const slots_raw=[];
   let pos=0;
   for(let r=1;r<rows.length;r++){
@@ -330,7 +288,9 @@ function parseData(rows){
     if(pos>ROWS*COLS)break;
     const rowNum=Math.ceil(pos/COLS);
     const placeNum=((pos-1)%COLS)+1;
-    const slotData={row:rowNum,place:placeNum,games:{}};
+    const status=cleanVal(row[statusCol]);
+    const isReady=status.toLowerCase().includes('готово');
+    const slotData={row:rowNum,place:placeNum,ready:isReady,games:{}};
     for(const p of pList){
       const game=cleanVal(row[p.gameCol]);
       const prov=cleanVal(row[p.provCol]);
@@ -342,16 +302,15 @@ function parseData(rows){
 
   // Build per-placement data
   for(const p of pList){
-    const isReady=placementReady[p.name]||false;
     const slots=slots_raw.map(s=>({
-      row:s.row,place:s.place,
-      ready:isReady,
+      row:s.row,place:s.place,ready:s.ready,
       ...s.games[p.name]
     }));
     const filled=slots.filter(s=>s.game&&!s.reserved).length;
-    const readyCount=isReady?filled:0;
+    const readyCount=slots.filter(s=>s.ready&&s.game&&!s.reserved).length;
     let liveStatus='notset';
-    if(filled>0&&isReady)liveStatus='live';
+    if(filled>0&&readyCount===filled)liveStatus='live';
+    else if(readyCount>0)liveStatus='partial';
     placements.push({name:p.name,project:getProject(p.name),slots,filled,total:ROWS*COLS,liveStatus,readyCount});
   }
 }
@@ -400,7 +359,7 @@ function renderGrid(p,dupSet){
         const isDup=dupSet&&dupSet.has(norm(s.game));
         const g=s.game.length>22?s.game.slice(0,21)+'…':s.game;
         const pv=s.provider?s.provider.split('/')[0].trim().slice(0,18):'';
-        html+=`<div class="slot filled${isDup?' is-dup':''}" style="--bcolor:${BC[p.project]||'#6366f1'}">
+        html+=`<div class="slot filled${isDup?' is-dup':''}" style="--bcolor:${getBrandColor(p.project)}">
           ${isDup?`<div class="dup-badge">×${dupSet.get(norm(s.game))}</div>`:''}
           ${s.ready?'<span class="set-tag set">SET</span>':'<span class="set-tag notset">NOT SET</span>'}
           <div class="pos">${r}.${pl}</div>
@@ -448,7 +407,7 @@ function render(){
   
   for(const proj of projOrder){
     if(!groups[proj])continue;
-    const col=BC[proj]||'#6366f1';
+    const col=getBrandColor(proj);
     const pF=groups[proj].reduce((a,p)=>a+p.filled,0);
     const pT=groups[proj].reduce((a,p)=>a+p.total,0);
     tF+=pF;tT+=pT;
