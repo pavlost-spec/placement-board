@@ -169,8 +169,9 @@ let MONTHS=loadMonths()||{...DEFAULT_MONTHS};
 let GID=Object.values(MONTHS)[0];
 const SKIP_KW=['reserve','поставить','ella games','inout/ella'];
 const ROWS=7, COLS=7;
-const BC={Neospin:'#6366f1',Crownslots:'#ec4899',Gunsbet:'#0ea5e9',Evospin:'#f59e0b'};
-const PROJECT_ORDER=['Neospin','Crownslots','Gunsbet','Evospin'];
+const BC={Neospin:'#6366f1',Crownslots:'#ec4899',Gunsbet:'#0ea5e9',Evospin:'#f59e0b','SR/BitStake':'#10b981',BeOnBet:'#8b5cf6','1RedBet':'#ef4444',Promo:'#6b7280'};
+function getBrandColor(proj){return BC[proj]||'#6b7280';}
+const PROJECT_ORDER=['Neospin','Crownslots','Gunsbet','Evospin','SR/BitStake','BeOnBet','1RedBet'];
 
 let placements=[];
 let collapsedP=new Set(), collapsedProj=new Set();
@@ -198,7 +199,8 @@ function getProject(name){
   if(u.includes('EVOSPIN'))return'Evospin';
   if(u.includes('SLOTRUSH')||u.includes('BITSTAKE'))return'SR/BitStake';
   if(u.includes('BEONBET'))return'BeOnBet';
-  return'Інші';
+  if(u.includes('1REDBET'))return'1RedBet';
+  return'Promo';
 }
 function norm(s){return s.toLowerCase().trim()}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
@@ -243,38 +245,78 @@ async function loadData(){
   document.getElementById('loader').classList.add('hide');
 }
 
+// Parse placement header name into {brand, category, locales[]}
+// e.g. "NEOSPIN AUSTRALIA Top (en-AU, en-NZ)" → brand="Neospin", category="TOP", locales=["EN-AU","EN-NZ"]
+function parsePlacement(name){
+  const locM=name.match(/\(([^)]+)\)/);
+  const locales=locM?locM[1].split(',').map(s=>s.trim().toUpperCase()).filter(Boolean):[];
+  const base=name.replace(/\s*\([^)]*\)/,'').trim();
+  const words=base.split(/\s+/);
+  const category=(words[words.length-1]||'').toUpperCase();
+  const brandWord=(words[0]||'').toUpperCase();
+  const BRAND_MAP={
+    'NEOSPIN':'Neospin','CROWNSLOTS':'Crownslots','GUNSBET':'Gunsbet',
+    'EVOSPIN':'Evospin','SLOTRUSH':'Slotrush','BITSTAKE':'Bitstake',
+    'BEONBET':'Beonbet','1REDBET':'1redbet'
+  };
+  const brand=BRAND_MAP[brandWord]||brandWord;
+  return{brand,category,locales};
+}
+
 function parseData(rows){
   placements=[];
   const header=rows[0]||[];
+  const placeCol=6; // col G
 
-  // Find F=row col, G=place col by position (they have no text header, just numbers)
-  // F and G are after col E (index 4), so index 5 and 6
-  const rowCol=5, placeCol=6;
-  
-  // Status col = E (index 4) — "Сортировка в БО"
-  const statusCol=4;
+  // Build statusLookup: "brand_lower|CATEGORY|LOCALE" → bool (Готово)
+  // Col A=brand(0), B=category(1), C=locale(2), E=status(4)
+  const statusLookup=new Map();
+  for(let r=1;r<rows.length;r++){
+    const row=rows[r];
+    const a=cleanVal(row[0]);
+    const b=cleanVal(row[1]);
+    const c=cleanVal(row[2]);
+    const e=cleanVal(row[4]);
+    if(a&&b&&c){
+      const key=`${a.toLowerCase()}|${b.toUpperCase()}|${c.toUpperCase()}`;
+      if(!statusLookup.has(key))
+        statusLookup.set(key, e.toLowerCase().includes('готово'));
+    }
+  }
 
-  // Placement columns start at H (index 7)
-  // Pattern: colH=placementName (header row), colH+1=empty(provider header?), colI=provider
-  // Actually: H=game, I=provider, J=empty separator, K=game, L=provider, M=empty...
-  // But header row 0: H="NEOSPIN AUSTRALIA Top...", I=empty, J=empty, K="NEOSPIN GERMANY...", etc.
-  
-  // Find placement headers: non-empty cells in header row starting from index 7
+  // Find placement headers starting at col 7
   const pList=[];
   let i=7;
   while(i<header.length){
     const h=String(header[i]||'').trim();
     if(h&&h.length>3){
-      // This is a placement name. Game=col i, Provider=col i+1
       pList.push({name:h,gameCol:i,provCol:i+1});
-      i+=3; // game + provider + separator
+      i+=3;
+    } else { i++; }
+  }
+
+  // Compute liveStatus per placement:
+  // SET   = all locales have Готово
+  // PARTIAL = some (but not all) locales have Готово
+  // NOT SET = none have Готово (or no matching rows)
+  const placementStatus={};
+  for(const p of pList){
+    const {brand,category,locales}=parsePlacement(p.name);
+    const bKey=brand.toLowerCase();
+    if(locales.length===0){
+      // No locales in name — try with ALL
+      const ready=statusLookup.get(`${bKey}|${category}|ALL`)||false;
+      placementStatus[p.name]=ready?'live':'notset';
     } else {
-      i++;
+      const results=locales.map(loc=>statusLookup.get(`${bKey}|${category}|${loc}`)||false);
+      const doneCount=results.filter(Boolean).length;
+      if(doneCount===locales.length) placementStatus[p.name]='live';
+      else if(doneCount>0)           placementStatus[p.name]='partial';
+      else                            placementStatus[p.name]='notset';
     }
   }
 
-  // Sequential position counting — ignore merged cells entirely
-  // Each row with game data = next position (1..49), row=ceil(pos/7), place=((pos-1)%7)+1
+  // Sequential position counting
   const slots_raw=[];
   let pos=0;
   for(let r=1;r<rows.length;r++){
@@ -287,9 +329,7 @@ function parseData(rows){
     if(pos>ROWS*COLS)break;
     const rowNum=Math.ceil(pos/COLS);
     const placeNum=((pos-1)%COLS)+1;
-    const status=cleanVal(row[statusCol]);
-    const isReady=status.toLowerCase().includes('готово');
-    const slotData={row:rowNum,place:placeNum,ready:isReady,games:{}};
+    const slotData={row:rowNum,place:placeNum,games:{}};
     for(const p of pList){
       const game=cleanVal(row[p.gameCol]);
       const prov=cleanVal(row[p.provCol]);
@@ -301,15 +341,15 @@ function parseData(rows){
 
   // Build per-placement data
   for(const p of pList){
+    const liveStatus=placementStatus[p.name]||'notset';
+    const isReady=(liveStatus==='live');
     const slots=slots_raw.map(s=>({
-      row:s.row,place:s.place,ready:s.ready,
+      row:s.row,place:s.place,
+      ready:isReady,
       ...s.games[p.name]
     }));
     const filled=slots.filter(s=>s.game&&!s.reserved).length;
-    const readyCount=slots.filter(s=>s.ready&&s.game&&!s.reserved).length;
-    let liveStatus='notset';
-    if(filled>0&&readyCount===filled)liveStatus='live';
-    else if(readyCount>0)liveStatus='partial';
+    const readyCount=isReady?filled:0;
     placements.push({name:p.name,project:getProject(p.name),slots,filled,total:ROWS*COLS,liveStatus,readyCount});
   }
 }
@@ -358,7 +398,7 @@ function renderGrid(p,dupSet){
         const isDup=dupSet&&dupSet.has(norm(s.game));
         const g=s.game.length>22?s.game.slice(0,21)+'…':s.game;
         const pv=s.provider?s.provider.split('/')[0].trim().slice(0,18):'';
-        html+=`<div class="slot filled${isDup?' is-dup':''}" style="--bcolor:${BC[p.project]||'#6366f1'}">
+        html+=`<div class="slot filled${isDup?' is-dup':''}" style="--bcolor:${getBrandColor(p.project)}">
           ${isDup?`<div class="dup-badge">×${dupSet.get(norm(s.game))}</div>`:''}
           ${s.ready?'<span class="set-tag set">SET</span>':'<span class="set-tag notset">NOT SET</span>'}
           <div class="pos">${r}.${pl}</div>
@@ -406,7 +446,7 @@ function render(){
   
   for(const proj of projOrder){
     if(!groups[proj])continue;
-    const col=BC[proj]||'#6366f1';
+    const col=getBrandColor(proj);
     const pF=groups[proj].reduce((a,p)=>a+p.filled,0);
     const pT=groups[proj].reduce((a,p)=>a+p.total,0);
     tF+=pF;tT+=pT;
@@ -446,32 +486,16 @@ function render(){
 }
 
 function collapseAll(){
-  const allCollapsed=document.querySelectorAll('.project-block:not(.collapsed)').length===0;
+  const anyOpen=document.querySelectorAll('.project-block:not(.collapsed)').length>0;
   const btn=document.getElementById('collapseBtn');
-  if(allCollapsed){
-    // expand all
-    document.querySelectorAll('.project-block').forEach(el=>{
-      const proj=el.dataset.proj;
-      collapsedProj.delete(proj);
-      el.classList.remove('collapsed');
-    });
-    document.querySelectorAll('.placement-block').forEach(el=>{
-      const p=el.dataset.p;
-      collapsedP.delete(p);
-      el.classList.remove('collapsed');
-    });
-    btn.textContent='⊟ Collapse';
-  } else {
-    // collapse all
-    document.querySelectorAll('.project-block').forEach(el=>{
-      collapsedProj.add(el.dataset.proj);
-      el.classList.add('collapsed');
-    });
-    document.querySelectorAll('.placement-block').forEach(el=>{
-      collapsedP.add(el.dataset.p);
-      el.classList.add('collapsed');
-    });
+  if(anyOpen){
+    document.querySelectorAll('.project-block').forEach(el=>{collapsedProj.add(el.dataset.proj);el.classList.add('collapsed');});
+    document.querySelectorAll('.placement-block').forEach(el=>{collapsedP.add(el.dataset.p);el.classList.add('collapsed');});
     btn.textContent='⊞ Expand';
+  } else {
+    document.querySelectorAll('.project-block').forEach(el=>{collapsedProj.delete(el.dataset.proj);el.classList.remove('collapsed');});
+    document.querySelectorAll('.placement-block').forEach(el=>{collapsedP.delete(el.dataset.p);el.classList.remove('collapsed');});
+    btn.textContent='⊟ Collapse';
   }
 }
 buildMonthSel();
