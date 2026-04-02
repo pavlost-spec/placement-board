@@ -89,16 +89,16 @@ body{font-family:"DM Sans",sans-serif;background:var(--bg);color:var(--text);min
 
 /* 7x7 GRID */
 .row-wrap{margin-bottom:5px}
-.row-label{font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-family:"DM Mono",monospace;margin-bottom:3px}
+.row-label{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-family:"DM Mono",monospace;margin-bottom:4px}
 .slot-row{display:flex;gap:5px}
 
-.slot{flex:1;min-height:64px;border-radius:6px;padding:7px 9px 7px 12px;position:relative;transition:transform .1s,box-shadow .1s;cursor:default}
+.slot{flex:1;min-height:72px;border-radius:6px;padding:8px 10px 8px 13px;position:relative;transition:transform .1s,box-shadow .1s;cursor:default}
 .slot:hover{transform:translateY(-1px);z-index:2}
 
 .slot.filled{background:#e9eaec;border:1px solid #d1d5db;border-left:3px solid var(--bcolor,var(--accent))}
 .slot.filled:hover{box-shadow:0 3px 10px rgba(0,0,0,.08)}
-.slot.filled .g{font-size:8px;font-weight:500;color:#374151;line-height:1.3;margin-top:1px}
-.slot.filled .p{font-size:10px;font-weight:600;color:#1f2937;font-family:"DM Sans",sans-serif;margin-top:3px}
+.slot.filled .g{font-size:10px;font-weight:500;color:#374151;line-height:1.3;margin-top:1px}
+.slot.filled .p{font-size:11px;font-weight:700;color:#111827;font-family:"DM Sans",sans-serif;margin-top:3px}
 
 /* dup highlight — only in dup mode */
 body.dup-mode .slot.filled.is-dup{background:#fef9c3;border-color:#f59e0b;border-left-color:#d97706}
@@ -117,8 +117,8 @@ body.dup-mode .slot.filled.is-dup .dup-badge{opacity:1}
 
 
 
-.pos{font-size:7px;font-family:"DM Mono",monospace;color:rgba(0,0,0,.2);margin-bottom:1px}
-.set-tag{display:inline-block;font-size:7px;font-weight:700;letter-spacing:.04em;padding:1px 5px;border-radius:3px;font-family:"DM Mono",monospace;position:absolute;top:6px;right:7px}
+.pos{font-size:8px;font-family:"DM Mono",monospace;color:rgba(0,0,0,.25);margin-bottom:2px}
+.set-tag{display:inline-block;font-size:8px;font-weight:700;letter-spacing:.04em;padding:2px 6px;border-radius:3px;font-family:"DM Mono",monospace;position:absolute;top:6px;right:7px}
 .set-tag.set{background:#dcfce7;color:#16a34a}
 .set-tag.notset{background:#f3f4f6;color:#9ca3af}
 
@@ -166,7 +166,7 @@ const DEFAULT_MONTHS={'Март 2026':'198055218','Квітень 2026':'8116741
 function loadMonths(){try{const s=localStorage.getItem('placement_months');return s?JSON.parse(s):null;}catch(e){return null;}}
 function saveMonths(m){try{localStorage.setItem('placement_months',JSON.stringify(m));}catch(e){}}
 let MONTHS=loadMonths()||{...DEFAULT_MONTHS};
-let GID=Object.values(MONTHS)[0];
+let GID=Object.values(MONTHS)[Object.values(MONTHS).length-1];
 const SKIP_KW=['reserve','поставить','ella games','inout/ella'];
 const ROWS=7, COLS=7;
 const BC={Neospin:'#6366f1',Crownslots:'#ec4899',Gunsbet:'#0ea5e9',Evospin:'#f59e0b','SR/BitStake':'#10b981',BeOnBet:'#8b5cf6','1RedBet':'#ef4444',Promo:'#6b7280'};
@@ -245,8 +245,6 @@ async function loadData(){
   document.getElementById('loader').classList.add('hide');
 }
 
-// Parse placement header name into {brand, category, locales[]}
-// e.g. "NEOSPIN AUSTRALIA Top (en-AU, en-NZ)" → brand="Neospin", category="TOP", locales=["EN-AU","EN-NZ"]
 function parsePlacement(name){
   const locM=name.match(/\(([^)]+)\)/);
   const locales=locM?locM[1].split(',').map(s=>s.trim().toUpperCase()).filter(Boolean):[];
@@ -266,64 +264,56 @@ function parsePlacement(name){
 function parseData(rows){
   placements=[];
   const header=rows[0]||[];
-  const placeCol=6; // col G
+  const placeCol=6;
 
-  // Build statusLookup: "brand_lower|CATEGORY|LOCALE" → bool (Готово)
-  // Col A=brand(0), B=category(1), C=locale(2), E=status(4)
+  // statusLookup: "brand_lower|CATEGORY|LOCALE" → bool
   const statusLookup=new Map();
   for(let r=1;r<rows.length;r++){
     const row=rows[r];
     const a=cleanVal(row[0]);
     const b=cleanVal(row[1]);
-    const c=cleanVal(row[2]);
+    const cv=cleanVal(row[2]);
     const e=cleanVal(row[4]);
-    if(a&&b&&c){
-      const key=`${a.toLowerCase()}|${b.toUpperCase()}|${c.toUpperCase()}`;
+    if(a&&b&&cv){
+      const key=`${a.toLowerCase()}|${b.toUpperCase()}|${cv.toUpperCase()}`;
       if(!statusLookup.has(key))
-        statusLookup.set(key, e.toLowerCase().includes('готово'));
+        statusLookup.set(key,e.toLowerCase().includes('готово'));
     }
   }
 
-  // Find placement headers starting at col 7
   const pList=[];
   let i=7;
   while(i<header.length){
     const h=String(header[i]||'').trim();
-    if(h&&h.length>3){
-      pList.push({name:h,gameCol:i,provCol:i+1});
-      i+=3;
-    } else { i++; }
+    if(h&&h.length>3){pList.push({name:h,gameCol:i,provCol:i+1});i+=3;}
+    else{i++;}
   }
 
-  // Compute liveStatus per placement:
-  // SET   = all locales have Готово
-  // PARTIAL = some (but not all) locales have Готово
-  // NOT SET = none have Готово (or no matching rows)
+  // Compute SET/PARTIAL/NOT SET per placement
   const placementStatus={};
   for(const p of pList){
     const {brand,category,locales}=parsePlacement(p.name);
     const bKey=brand.toLowerCase();
     if(locales.length===0){
-      // No locales in name — try with ALL
       const ready=statusLookup.get(`${bKey}|${category}|ALL`)||false;
       placementStatus[p.name]=ready?'live':'notset';
     } else {
       const results=locales.map(loc=>statusLookup.get(`${bKey}|${category}|${loc}`)||false);
       const doneCount=results.filter(Boolean).length;
-      if(doneCount===locales.length) placementStatus[p.name]='live';
-      else if(doneCount>0)           placementStatus[p.name]='partial';
-      else                            placementStatus[p.name]='notset';
+      if(doneCount===locales.length)      placementStatus[p.name]='live';
+      else if(doneCount>0)                placementStatus[p.name]='partial';
+      else                                placementStatus[p.name]='notset';
     }
   }
 
-  // Sequential position counting
+  // Sequential slot parsing
   const slots_raw=[];
   let pos=0;
   for(let r=1;r<rows.length;r++){
     const row=rows[r];
     const hasGame=pList.some(p=>{const g=String(row[p.gameCol]||'').trim();return g.length>2;});
     const pv=String(row[placeCol]||'').trim();
-    const hasPlace=/^\d+$/.test(pv);
+    const hasPlace=/^[0-9]+$/.test(pv);
     if(!hasGame&&!hasPlace)continue;
     pos++;
     if(pos>ROWS*COLS)break;
@@ -339,15 +329,10 @@ function parseData(rows){
     slots_raw.push(slotData);
   }
 
-  // Build per-placement data
   for(const p of pList){
     const liveStatus=placementStatus[p.name]||'notset';
     const isReady=(liveStatus==='live');
-    const slots=slots_raw.map(s=>({
-      row:s.row,place:s.place,
-      ready:isReady,
-      ...s.games[p.name]
-    }));
+    const slots=slots_raw.map(s=>({row:s.row,place:s.place,ready:isReady,...s.games[p.name]}));
     const filled=slots.filter(s=>s.game&&!s.reserved).length;
     const readyCount=isReady?filled:0;
     placements.push({name:p.name,project:getProject(p.name),slots,filled,total:ROWS*COLS,liveStatus,readyCount});
@@ -450,12 +435,14 @@ function render(){
     const pF=groups[proj].reduce((a,p)=>a+p.filled,0);
     const pT=groups[proj].reduce((a,p)=>a+p.total,0);
     tF+=pF;tT+=pT;
+    const pLive=groups[proj].filter(p=>p.liveStatus==='live').length;
+    const pAll=groups[proj].length;
     const isColProj=collapsedProj.has(proj);
 
     html+=`<div class="project-block${isColProj?' collapsed':''}" data-proj="${esc(proj)}">
       <div class="project-hdr" style="--bcolor:${col}" onclick="toggleProj('${proj}')">
         <span class="project-name">${esc(proj)}</span>
-        <span class="project-stat">${pF}/${pT} · ${Math.round(pF/pT*100)}%</span>
+        <span class="project-stat">${pF}/${pT} slots · <span style="color:${pLive===pAll&&pAll>0?'#16a34a':pLive>0?'#b45309':'#9ca3af'};font-weight:600">${pLive}/${pAll} set</span></span>
         <span class="proj-chevron">▾</span>
       </div>
       <div class="project-body">`;
