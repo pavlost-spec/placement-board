@@ -89,16 +89,16 @@ body{font-family:"DM Sans",sans-serif;background:var(--bg);color:var(--text);min
 
 /* 7x7 GRID */
 .row-wrap{margin-bottom:5px}
-.row-label{font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-family:"DM Mono",monospace;margin-bottom:3px}
+.row-label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-family:"DM Mono",monospace;margin-bottom:5px}
 .slot-row{display:flex;gap:5px}
 
-.slot{flex:1;min-height:72px;border-radius:6px;padding:8px 10px 8px 13px;position:relative;transition:transform .1s,box-shadow .1s;cursor:default}
+.slot{flex:1;min-height:80px;border-radius:6px;padding:9px 11px 9px 14px;position:relative;transition:transform .1s,box-shadow .1s;cursor:default}
 .slot:hover{transform:translateY(-1px);z-index:2}
 
 .slot.filled{background:#e9eaec;border:1px solid #d1d5db;border-left:3px solid var(--bcolor,var(--accent))}
 .slot.filled:hover{box-shadow:0 3px 10px rgba(0,0,0,.08)}
-.slot.filled .g{font-size:10px;font-weight:500;color:#374151;line-height:1.3;margin-top:1px}
-.slot.filled .p{font-size:11px;font-weight:700;color:#111827;font-family:"DM Sans",sans-serif;margin-top:3px}
+.slot.filled .g{font-size:11px;font-weight:500;color:#374151;line-height:1.35;margin-top:2px}
+.slot.filled .p{font-size:12px;font-weight:700;color:#111827;font-family:"DM Sans",sans-serif;margin-top:4px}
 
 /* dup highlight — only in dup mode */
 body.dup-mode .slot.filled.is-dup{background:#fef9c3;border-color:#f59e0b;border-left-color:#d97706}
@@ -110,15 +110,15 @@ body.dup-mode .slot.reserved{opacity:.3}
 body.dup-mode .slot.filled.is-dup .dup-badge{opacity:1}
 
 .slot.empty{background:#dcfce7;border:1px solid #86efac;border-left:3px solid #22c55e}
-.slot.empty .fr{font-size:9px;font-weight:600;color:#16a34a;margin-top:12px}
+.slot.empty .fr{font-size:11px;font-weight:600;color:#16a34a;margin-top:14px}
 
 .slot.reserved{background:#fef9c3;border:1px solid #fcd34d;border-left:3px solid #f59e0b}
-.slot.reserved .g{font-size:9px;font-weight:500;color:#92400e;margin-top:1px}
+.slot.reserved .g{font-size:11px;font-weight:500;color:#92400e;margin-top:2px}
 
 
 
-.pos{font-size:8px;font-family:"DM Mono",monospace;color:rgba(0,0,0,.25);margin-bottom:2px}
-.set-tag{display:inline-block;font-size:8px;font-weight:700;letter-spacing:.04em;padding:2px 6px;border-radius:3px;font-family:"DM Mono",monospace;position:absolute;top:6px;right:7px}
+.pos{font-size:9px;font-family:"DM Mono",monospace;color:rgba(0,0,0,.25);margin-bottom:2px}
+.set-tag{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.04em;padding:2px 7px;border-radius:3px;font-family:"DM Mono",monospace;position:absolute;top:6px;right:7px}
 .set-tag.set{background:#dcfce7;color:#16a34a}
 .set-tag.notset{background:#f3f4f6;color:#9ca3af}
 
@@ -204,6 +204,17 @@ function getProject(name){
   if(u.includes('1REDBET'))return'1RedBet';
   return'Promo';
 }
+// Strip "ALL SS ..." or "ALL Projects ..." prefix, keep only category name
+function shortenShared(n){
+  // Remove everything up to and including first – or — separator
+  let s=n.replace(/^ALL\s+(?:SS|PROJECTS?)\s*[+\w\s]*[–\-—]+\s*/i,'').trim();
+  if(!s||s===n){
+    // fallback: remove first 2 words (ALL SS / ALL Projects)
+    const parts=n.split(/\s+/);
+    s=parts.slice(2).join(' ').trim()||n;
+  }
+  return s;
+}
 function norm(s){return s.toLowerCase().trim()}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 
@@ -247,7 +258,6 @@ async function loadData(){
   document.getElementById('loader').classList.add('hide');
 }
 
-// Detect shared type: 'allss' | 'allprojects' | null
 function sharedType(name){
   const u=name.toUpperCase();
   if(u.startsWith('ALL SS'))return'allss';
@@ -259,7 +269,6 @@ function sharedTargets(type){
   if(type==='allprojects')return PROJECT_ORDER;
   return[];
 }
-
 function parsePlacement(name){
   const locM=name.match(/\(([^)]+)\)/);
   const locales=locM?locM[1].split(',').map(s=>s.trim().toUpperCase()).filter(Boolean):[];
@@ -282,21 +291,26 @@ function parseData(rows){
   const placeCol=6;
 
   // statusLookup: "brand_lower|CATEGORY|LOCALE" → bool (Готово)
+  // For shared placements we also store ALL rows regardless of brand match
   const statusLookup=new Map();
+  // Also build a category+locale lookup ignoring brand (for shared)
+  // key: "CATEGORY|LOCALE" → bool
+  const sharedStatusLookup=new Map();
+
   for(let r=1;r<rows.length;r++){
     const row=rows[r];
-    const a=cleanVal(row[0]);
-    const b=cleanVal(row[1]);
-    const cv=cleanVal(row[2]);
-    const e=cleanVal(row[4]);
+    const a=cleanVal(row[0]),b=cleanVal(row[1]),cv=cleanVal(row[2]),e=cleanVal(row[4]);
     if(a&&b&&cv){
+      const isReady=e.toLowerCase().includes('готово');
       const key=`${a.toLowerCase()}|${b.toUpperCase()}|${cv.toUpperCase()}`;
-      if(!statusLookup.has(key))
-        statusLookup.set(key,e.toLowerCase().includes('готово'));
+      if(!statusLookup.has(key))statusLookup.set(key,isReady);
+      // shared lookup: category|locale → ready (any brand)
+      const sKey=`${b.toUpperCase()}|${cv.toUpperCase()}`;
+      if(!sharedStatusLookup.has(sKey))sharedStatusLookup.set(sKey,isReady);
+      else if(isReady)sharedStatusLookup.set(sKey,true); // upgrade to ready if any brand has it
     }
   }
 
-  // Find placement headers starting at col 7
   const pList=[];
   let i=7;
   while(i<header.length){
@@ -305,12 +319,11 @@ function parseData(rows){
     else{i++;}
   }
 
-  function computeStatus(name){
+  // Compute status for a normal (branded) placement
+  function computeBrandedStatus(name){
     const {brand,category,locales}=parsePlacement(name);
     const bKey=brand.toLowerCase();
-    if(locales.length===0){
-      return(statusLookup.get(`${bKey}|${category}|ALL`)||false)?'live':'notset';
-    }
+    if(locales.length===0)return(statusLookup.get(`${bKey}|${category}|ALL`)||false)?'live':'notset';
     const results=locales.map(loc=>statusLookup.get(`${bKey}|${category}|${loc}`)||false);
     const done=results.filter(Boolean).length;
     if(done===locales.length)return'live';
@@ -318,7 +331,21 @@ function parseData(rows){
     return'notset';
   }
 
-  // Parse slots
+  // Compute status for a shared placement:
+  // Extract category name from header (after stripping ALL SS/Projects prefix)
+  // Then look up by CATEGORY|ALL in sharedStatusLookup
+  function computeSharedStatus(name){
+    const catName=shortenShared(name).toUpperCase();
+    // Try exact category match with ALL locale
+    const direct=sharedStatusLookup.get(`${catName}|ALL`);
+    if(direct!==undefined)return direct?'live':'notset';
+    // Try matching any key that starts with catName
+    for(const[k,v]of sharedStatusLookup){
+      if(k.startsWith(catName+'|'))return v?'live':'notset';
+    }
+    return'notset';
+  }
+
   const slots_raw=[];
   let pos=0;
   for(let r=1;r<rows.length;r++){
@@ -343,26 +370,21 @@ function parseData(rows){
 
   for(const p of pList){
     const sType=sharedType(p.name);
-    const liveStatus=computeStatus(p.name);
+    const liveStatus=sType?computeSharedStatus(p.name):computeBrandedStatus(p.name);
     const isReady=(liveStatus==='live');
     const slots=slots_raw.map(s=>({row:s.row,place:s.place,ready:isReady,...s.games[p.name]}));
     const filled=slots.filter(s=>s.game&&!s.reserved).length;
+    const displayName=sType?shortenShared(p.name):shorten(p.name);
 
     if(sType){
-      // Clone into each target brand as normal-looking placement
       for(const brand of sharedTargets(sType)){
-        placements.push({
-          name:p.name,project:brand,slots,filled,
+        placements.push({name:p.name,displayName,project:brand,slots,filled,
           total:ROWS*COLS,liveStatus,readyCount:isReady?filled:0,
-          shared:true,sharedLabel:sType==='allss'?'SS':'ALL'
-        });
+          shared:true,sharedLabel:sType==='allss'?'SS':'ALL'});
       }
     } else {
-      placements.push({
-        name:p.name,project:getProject(p.name),slots,filled,
-        total:ROWS*COLS,liveStatus,readyCount:isReady?filled:0,
-        shared:false,sharedLabel:null
-      });
+      placements.push({name:p.name,displayName,project:getProject(p.name),slots,filled,
+        total:ROWS*COLS,liveStatus,readyCount:isReady?filled:0,shared:false,sharedLabel:null});
     }
   }
 }
@@ -400,7 +422,7 @@ function renderGrid(p,dupSet){
   for(const s of p.slots)matrix[`${s.row}_${s.place}`]=s;
   let html='';
   for(let r=1;r<=ROWS;r++){
-    html+=`<div class="row-wrap"><div class="row-label">Ряд ${r}</div><div class="slot-row">`;
+    html+=`<div class="row-wrap"><div class="row-label">Row ${r}</div><div class="slot-row">`;
     for(let pl=1;pl<=COLS;pl++){
       const s=matrix[`${r}_${pl}`];
       if(!s||(!s.game&&!s.reserved)){
@@ -484,7 +506,7 @@ function render(){
       const pKey=p.shared?`${p.project}__${p.name}`:p.name;
       html+=`<div class="placement-block${isColP?' collapsed':''}" data-p="${esc(pKey)}">
         <div class="placement-hdr" style="--bcolor:${col}" onclick="toggleP('${pKey.replace(/'/g,"\'")}')">
-          <span class="placement-name">${esc(shorten(p.name))}${p.sharedLabel?`<span class="shared-badge">${p.sharedLabel}</span>`:''}</span>
+          <span class="placement-name">${esc(p.displayName)}${p.sharedLabel?`<span class="shared-badge">${p.sharedLabel}</span>`:''}</span>
           <span class="placement-meta">${p.filled}/${p.total}</span>
           <span class="live-badge ${p.liveStatus}">${liveLabel}</span>
           <span class="chevron">▾</span>
