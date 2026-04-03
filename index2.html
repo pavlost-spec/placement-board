@@ -89,7 +89,7 @@ body{font-family:"DM Sans",sans-serif;background:var(--bg);color:var(--text);min
 
 /* 7x7 GRID */
 .row-wrap{margin-bottom:5px}
-.row-label{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-family:"DM Mono",monospace;margin-bottom:4px}
+.row-label{font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-family:"DM Mono",monospace;margin-bottom:3px}
 .slot-row{display:flex;gap:5px}
 
 .slot{flex:1;min-height:72px;border-radius:6px;padding:8px 10px 8px 13px;position:relative;transition:transform .1s,box-shadow .1s;cursor:default}
@@ -122,6 +122,7 @@ body.dup-mode .slot.filled.is-dup .dup-badge{opacity:1}
 .set-tag.set{background:#dcfce7;color:#16a34a}
 .set-tag.notset{background:#f3f4f6;color:#9ca3af}
 
+.shared-badge{display:inline-block;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;background:#f0f9ff;color:#0369a1;border:1px solid #bae6fd;margin-left:6px;vertical-align:middle;font-family:"DM Mono",monospace}
 .error-msg{text-align:center;padding:60px;color:var(--muted);font-size:13px;font-family:"DM Mono",monospace;line-height:2}
 .empty-state{text-align:center;padding:40px;color:var(--muted);font-size:13px}
 </style>
@@ -171,6 +172,7 @@ const SKIP_KW=['reserve','поставить','ella games','inout/ella'];
 const ROWS=7, COLS=7;
 const BC={Neospin:'#6366f1',Crownslots:'#ec4899',Gunsbet:'#0ea5e9',Evospin:'#f59e0b','SR/BitStake':'#10b981',BeOnBet:'#8b5cf6','1RedBet':'#ef4444',Promo:'#6b7280'};
 function getBrandColor(proj){return BC[proj]||'#6b7280';}
+const SS_BRANDS=['Neospin','Crownslots','Gunsbet','Evospin'];
 const PROJECT_ORDER=['Neospin','Crownslots','Gunsbet','Evospin','SR/BitStake','BeOnBet','1RedBet'];
 
 let placements=[];
@@ -245,6 +247,19 @@ async function loadData(){
   document.getElementById('loader').classList.add('hide');
 }
 
+// Detect shared type: 'allss' | 'allprojects' | null
+function sharedType(name){
+  const u=name.toUpperCase();
+  if(u.startsWith('ALL SS'))return'allss';
+  if(u.startsWith('ALL PROJECT'))return'allprojects';
+  return null;
+}
+function sharedTargets(type){
+  if(type==='allss')return SS_BRANDS;
+  if(type==='allprojects')return PROJECT_ORDER;
+  return[];
+}
+
 function parsePlacement(name){
   const locM=name.match(/\(([^)]+)\)/);
   const locales=locM?locM[1].split(',').map(s=>s.trim().toUpperCase()).filter(Boolean):[];
@@ -266,7 +281,7 @@ function parseData(rows){
   const header=rows[0]||[];
   const placeCol=6;
 
-  // statusLookup: "brand_lower|CATEGORY|LOCALE" → bool
+  // statusLookup: "brand_lower|CATEGORY|LOCALE" → bool (Готово)
   const statusLookup=new Map();
   for(let r=1;r<rows.length;r++){
     const row=rows[r];
@@ -281,6 +296,7 @@ function parseData(rows){
     }
   }
 
+  // Find placement headers starting at col 7
   const pList=[];
   let i=7;
   while(i<header.length){
@@ -289,24 +305,20 @@ function parseData(rows){
     else{i++;}
   }
 
-  // Compute SET/PARTIAL/NOT SET per placement
-  const placementStatus={};
-  for(const p of pList){
-    const {brand,category,locales}=parsePlacement(p.name);
+  function computeStatus(name){
+    const {brand,category,locales}=parsePlacement(name);
     const bKey=brand.toLowerCase();
     if(locales.length===0){
-      const ready=statusLookup.get(`${bKey}|${category}|ALL`)||false;
-      placementStatus[p.name]=ready?'live':'notset';
-    } else {
-      const results=locales.map(loc=>statusLookup.get(`${bKey}|${category}|${loc}`)||false);
-      const doneCount=results.filter(Boolean).length;
-      if(doneCount===locales.length)      placementStatus[p.name]='live';
-      else if(doneCount>0)                placementStatus[p.name]='partial';
-      else                                placementStatus[p.name]='notset';
+      return(statusLookup.get(`${bKey}|${category}|ALL`)||false)?'live':'notset';
     }
+    const results=locales.map(loc=>statusLookup.get(`${bKey}|${category}|${loc}`)||false);
+    const done=results.filter(Boolean).length;
+    if(done===locales.length)return'live';
+    if(done>0)return'partial';
+    return'notset';
   }
 
-  // Sequential slot parsing
+  // Parse slots
   const slots_raw=[];
   let pos=0;
   for(let r=1;r<rows.length;r++){
@@ -330,12 +342,28 @@ function parseData(rows){
   }
 
   for(const p of pList){
-    const liveStatus=placementStatus[p.name]||'notset';
+    const sType=sharedType(p.name);
+    const liveStatus=computeStatus(p.name);
     const isReady=(liveStatus==='live');
     const slots=slots_raw.map(s=>({row:s.row,place:s.place,ready:isReady,...s.games[p.name]}));
     const filled=slots.filter(s=>s.game&&!s.reserved).length;
-    const readyCount=isReady?filled:0;
-    placements.push({name:p.name,project:getProject(p.name),slots,filled,total:ROWS*COLS,liveStatus,readyCount});
+
+    if(sType){
+      // Clone into each target brand as normal-looking placement
+      for(const brand of sharedTargets(sType)){
+        placements.push({
+          name:p.name,project:brand,slots,filled,
+          total:ROWS*COLS,liveStatus,readyCount:isReady?filled:0,
+          shared:true,sharedLabel:sType==='allss'?'SS':'ALL'
+        });
+      }
+    } else {
+      placements.push({
+        name:p.name,project:getProject(p.name),slots,filled,
+        total:ROWS*COLS,liveStatus,readyCount:isReady?filled:0,
+        shared:false,sharedLabel:null
+      });
+    }
   }
 }
 
@@ -432,17 +460,19 @@ function render(){
   for(const proj of projOrder){
     if(!groups[proj])continue;
     const col=getBrandColor(proj);
-    const pF=groups[proj].reduce((a,p)=>a+p.filled,0);
-    const pT=groups[proj].reduce((a,p)=>a+p.total,0);
+    const pOwn=groups[proj].filter(p=>!p.shared);
+    const pF=pOwn.reduce((a,p)=>a+p.filled,0);
+    const pT=pOwn.reduce((a,p)=>a+p.total,0);
     tF+=pF;tT+=pT;
     const pLive=groups[proj].filter(p=>p.liveStatus==='live').length;
     const pAll=groups[proj].length;
+    const setColor=pLive===pAll&&pAll>0?'#16a34a':pLive>0?'#b45309':'#9ca3af';
     const isColProj=collapsedProj.has(proj);
 
     html+=`<div class="project-block${isColProj?' collapsed':''}" data-proj="${esc(proj)}">
       <div class="project-hdr" style="--bcolor:${col}" onclick="toggleProj('${proj}')">
         <span class="project-name">${esc(proj)}</span>
-        <span class="project-stat">${pF}/${pT} slots · <span style="color:${pLive===pAll&&pAll>0?'#16a34a':pLive>0?'#b45309':'#9ca3af'};font-weight:600">${pLive}/${pAll} set</span></span>
+        <span class="project-stat">${pF}/${pT} slots · <span style="color:${setColor};font-weight:600">${pLive}/${pAll} set</span></span>
         <span class="proj-chevron">▾</span>
       </div>
       <div class="project-body">`;
@@ -451,9 +481,10 @@ function render(){
     for(const p of groups[proj]){
       const isColP=collapsedP.has(p.name);
       const liveLabel=p.liveStatus==='live'?'LIVE':p.liveStatus==='partial'?'Partial':'Not set';
-      html+=`<div class="placement-block${isColP?' collapsed':''}" data-p="${esc(p.name)}">
-        <div class="placement-hdr" style="--bcolor:${col}" onclick="toggleP('${p.name.replace(/'/g,"\'")}')">
-          <span class="placement-name">${esc(shorten(p.name))}</span>
+      const pKey=p.shared?`${p.project}__${p.name}`:p.name;
+      html+=`<div class="placement-block${isColP?' collapsed':''}" data-p="${esc(pKey)}">
+        <div class="placement-hdr" style="--bcolor:${col}" onclick="toggleP('${pKey.replace(/'/g,"\'")}')">
+          <span class="placement-name">${esc(shorten(p.name))}${p.sharedLabel?`<span class="shared-badge">${p.sharedLabel}</span>`:''}</span>
           <span class="placement-meta">${p.filled}/${p.total}</span>
           <span class="live-badge ${p.liveStatus}">${liveLabel}</span>
           <span class="chevron">▾</span>
